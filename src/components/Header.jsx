@@ -17,6 +17,7 @@ import OrderForm from "./OrderForm";
 import KarigarList from "./KarigarList";
 import UserManagementModal from "./UserManagementModal";
 import { UserContext } from "../context";
+import Person from "@mui/icons-material/Person";
 
 export default function Header() {
   const location = useLocation();
@@ -69,7 +70,7 @@ export default function Header() {
   };
 
   const handleLogoClick = () => {
-    navigate("/home");
+    navigate("/orders");
   };
 
   return (
@@ -132,19 +133,6 @@ export default function Header() {
                   display: { xs: "block", md: "none" },
                 }}
               >
-                <MenuItem key="home">
-                  <Typography
-                    sx={{
-                      textTransform: "uppercase",
-                      borderBottom:
-                        currentPage === "home" ? "1px solid black" : "0px",
-                    }}
-                    textAlign="center"
-                    onClick={() => handleNavigate("home")}
-                  >
-                    Home
-                  </Typography>
-                </MenuItem>
                 <MenuItem key="orders">
                   <Typography
                     sx={{
@@ -220,19 +208,6 @@ export default function Header() {
               }}
             >
               <Button
-                key="home"
-                onClick={() => handleNavigate("home")}
-                sx={{
-                  my: 2,
-                  color: "white",
-                  display: "block",
-                  boxShadow:
-                    currentPage === "home" ? "0px 0px 5px 0px" : "none",
-                }}
-              >
-                Home
-              </Button>
-              <Button
                 key="orders"
                 onClick={() => handleNavigate("orders")}
                 sx={{
@@ -279,9 +254,10 @@ export default function Header() {
             <Box sx={{ flexGrow: 0 }}>
               <Button
                 onClick={handleOpenUserMenu}
+                startIcon={<Person />}
                 sx={{ p: 0, color: "white" }}
               >
-                User: {user}
+                {user}
               </Button>
               <Menu
                 sx={{ mt: "45px" }}

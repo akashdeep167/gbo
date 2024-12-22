@@ -36,7 +36,7 @@ export default function Login() {
     const user = await loginApi(formData);
     if (user) {
       login(user.accessToken);
-      navigate("/home");
+      navigate("/orders");
     } else {
       setInvalid(true);
     }

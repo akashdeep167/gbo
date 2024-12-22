@@ -153,7 +153,7 @@ const OrderTable = ({ active }) => {
 
   const filteredOrders = currentOrders?.filter(
     (order) =>
-      order.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.order_id.toString().includes(searchTerm)
   );
 
@@ -186,7 +186,7 @@ const OrderTable = ({ active }) => {
           <TextField
             variant="outlined"
             size="small"
-            placeholder="Search by Product or ID"
+            placeholder="Search by Client or ID"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             fullWidth
@@ -204,9 +204,9 @@ const OrderTable = ({ active }) => {
             <TableHead>
               <TableRow>
                 <StyledHeaderCell>ID</StyledHeaderCell>
-                <StyledHeaderCell>Product</StyledHeaderCell>
+                <StyledHeaderCell>Client</StyledHeaderCell>
                 <StyledHeaderCell>Karat</StyledHeaderCell>
-                <StyledHeaderCell>Lot Weight</StyledHeaderCell>
+                <StyledHeaderCell>Weight</StyledHeaderCell>
                 <StyledHeaderCell>Images</StyledHeaderCell>
                 <StyledHeaderCell>Description</StyledHeaderCell>
                 <StyledHeaderCell>Placed Date</StyledHeaderCell>
@@ -231,7 +231,7 @@ const OrderTable = ({ active }) => {
                   <StyledTableCell
                     sx={{ color: order.status === "complete" && "#FFFFFF" }}
                   >
-                    {order.product}
+                    {order.client}
                   </StyledTableCell>
                   <StyledTableCell
                     sx={{ color: order.status === "complete" && "#FFFFFF" }}
@@ -241,7 +241,7 @@ const OrderTable = ({ active }) => {
                   <StyledTableCell
                     sx={{ color: order.status === "complete" && "#FFFFFF" }}
                   >
-                    {order.lot_weight}
+                    {order.weight}
                   </StyledTableCell>
                   <StyledTableCell
                     sx={{
@@ -360,6 +360,9 @@ const OrderTable = ({ active }) => {
             </TableBody>
           </StyledTable>
         </StyledTableContainer>
+        {filteredOrders.length === 0 && (
+          <Box sx={{ textAlign: "center" }}>*No orders available</Box>
+        )}
       </StyledPaper>
       <ImageDialog
         imageModalOpen={imageModalOpen}

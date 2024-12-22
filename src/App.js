@@ -10,7 +10,6 @@ import Login from "./pages/Login";
 import Orders from "./pages/Orders";
 import History from "./pages/History";
 import ProtectedRoute from "./components/ProtectedRoute";
-import Home from "./pages/Home";
 import { OrderProvider, KarigarProvider, UserProvider } from "./context";
 import { InternetConnectionWrapper } from "./components/InternetConnectionWrapper";
 import { useUser } from "./context/UserContext";
@@ -49,14 +48,6 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <Orders />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/home"
-                    element={
-                      <ProtectedRoute>
-                        <Home />
                       </ProtectedRoute>
                     }
                   />

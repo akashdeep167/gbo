@@ -16,23 +16,21 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import FileUploadIcon from "@mui/icons-material/FileUpload";
 import { OrderContext, KarigarContext } from "../context";
-import { products } from "../constants/products";
 import { uploadImagesToS3, deleteImageFromS3 } from "../server/api";
 
 const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
   const initialOrderData = {
-    product: "",
-    customProduct: "",
+    client: "",
     karat: "18K",
     karigar_id: undefined,
-    lot_weight: "",
+    weight: "",
     description: "",
     placed_date: "",
     delivery_date: "",
     images: [],
     status: "active",
     customKarat: "",
-    placed_by: "akash",
+    placed_by: "purnim",
   };
 
   const { karigars } = useContext(KarigarContext);
@@ -48,36 +46,31 @@ const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
     if (order) {
       const imageUrls = order.order_images.map((image) => image.imageUrl);
 
-      // Check if the current karat or product is custom (not predefined)
       const isCustomKarat = !["18K", "20K", "22K"].includes(order.karat);
-      const isCustomProduct = !products.includes(order.product);
 
       setOrderData({
         ...initialOrderData,
         ...order,
         images: imageUrls,
         karigar_id: order.karigar_id || order.karigar?.id,
+        client: order.client || "",
+        weight: order.weight || "",
         placed_date: order.placed_date || "",
         delivery_date: order.delivery_date || "",
         customKarat: isCustomKarat ? order.karat : "", // If custom, set it in customKarat
         karat: isCustomKarat ? "other" : order.karat, // Set 'other' for custom values
-        customProduct: isCustomProduct ? order.product : "", // Same for customProduct
-        product: isCustomProduct ? "other" : order.product, // Set 'other' for custom products
       });
     }
-    // eslint-disable-next-line
   }, [order]);
 
   useEffect(() => {
     const isFormValid =
-      orderData.lot_weight &&
+      orderData.weight &&
       orderData.placed_date &&
       orderData.delivery_date &&
       orderData.karigar_id &&
-      orderData.product &&
-      (orderData.karat !== "other" || orderData.customKarat) &&
-      (orderData.product !== "other" || orderData.customProduct);
-
+      orderData.client &&
+      (orderData.karat !== "other" || orderData.customKarat);
     setIsValid(isFormValid);
   }, [orderData]);
 
@@ -135,7 +128,9 @@ const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
 
     // Remove images from S3
     if (deletedImages.length > 0) {
+      setLoading(true);
       await deleteImageFromS3(deletedImages);
+      setLoading(false);
     }
     const filteredImages = orderData.images.filter(
       (image) => !image?.startsWith("blob")
@@ -146,10 +141,6 @@ const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
       ...orderData,
       karat:
         orderData.karat === "other" ? orderData.customKarat : orderData.karat,
-      product:
-        orderData.product === "other"
-          ? orderData.customProduct
-          : orderData.product,
       images: [...filteredImages, ...uploadedImageUrls],
     };
     if (order) {
@@ -202,40 +193,6 @@ const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <FormControl fullWidth margin="normal" required>
-                <InputLabel>Product</InputLabel>
-                <Select
-                  name="product"
-                  value={orderData.product}
-                  onChange={handleChange}
-                >
-                  {products &&
-                    products.map((product) => (
-                      <MenuItem value={product}>{product}</MenuItem>
-                    ))}
-
-                  <MenuItem value="other">Other</MenuItem>
-                </Select>
-              </FormControl>
-              {orderData.product === "other" && (
-                <>
-                  <TextField
-                    fullWidth
-                    label="Custom product"
-                    name="customProduct"
-                    value={orderData.customProduct}
-                    onChange={handleChange}
-                    margin="normal"
-                    required
-                    inputProps={{ maxLength: 200 }}
-                  />
-                  <Typography variant="body2" color="textSecondary">
-                    {`${orderData.customProduct.length}/200`}
-                  </Typography>
-                </>
-              )}
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth margin="normal" required>
                 <InputLabel>Karat</InputLabel>
                 <Select
                   name="karat"
@@ -267,6 +224,55 @@ const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
               )}
             </Grid>
             <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Weight"
+                name="weight"
+                value={orderData.weight}
+                onChange={handleChange}
+                margin="normal"
+                required
+                inputProps={{ maxLength: 20 }}
+              />
+              <Typography variant="body2" color="textSecondary">
+                {`${orderData.weight.length}/20`}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                label="Description"
+                name="description"
+                value={orderData.description}
+                onChange={handleChange}
+                margin="normal"
+                inputProps={{ maxLength: 200 }} // Limit to 200 characters
+                required
+              />
+              <Typography variant="body2" color="textSecondary">
+                {`${orderData.description.length}/200`}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth margin="normal" required>
+                <TextField
+                  fullWidth
+                  label="Client"
+                  name="client"
+                  value={orderData.client}
+                  onChange={handleChange}
+                  margin="normal"
+                  required
+                  inputProps={{ maxLength: 20 }}
+                />
+                <Typography variant="body2" color="textSecondary">
+                  {`${orderData.client.length}/20`}
+                </Typography>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
               <FormControl fullWidth margin="normal" required>
                 <InputLabel>Karigar</InputLabel>
                 <Select
@@ -288,40 +294,8 @@ const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Lot Weight"
-                name="lot_weight"
-                value={orderData.lot_weight}
-                onChange={handleChange}
-                margin="normal"
-                required
-                inputProps={{ maxLength: 20 }}
-              />
-              <Typography variant="body2" color="textSecondary">
-                {`${orderData.lot_weight.length}/20`}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                label="Description"
-                name="description"
-                value={orderData.description}
-                onChange={handleChange}
-                margin="normal"
-                inputProps={{ maxLength: 200 }} // Limit to 200 characters
-                required
-              />
-              <Typography variant="body2" color="textSecondary">
-                {`${orderData.description.length}/200`}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
                 type="date"
-                label="Date Placed"
+                label="Order Date"
                 name="placed_date"
                 value={orderData.placed_date}
                 onChange={handleChange}
@@ -332,7 +306,7 @@ const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
               <TextField
                 fullWidth
                 type="date"
-                label="End Date"
+                label="Delivery Date"
                 name="delivery_date"
                 value={orderData.delivery_date}
                 onChange={handleChange}
@@ -341,7 +315,7 @@ const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
                 required
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={12}>
               <Box
                 mt={1}
                 display="flex"
@@ -362,7 +336,7 @@ const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
                     }}
                   >
                     <Typography sx={{ fontSize: "0.875rem" }} color="error">
-                      *No image selected
+                      No image selected
                     </Typography>
                   </Box>
                 ) : (
@@ -402,7 +376,11 @@ const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
                   color="primary"
                   component="label"
                   startIcon={<FileUploadIcon />}
-                  sx={{ textTransform: "none" }}
+                  sx={{
+                    textTransform: "none",
+                    width: "fit-content",
+                    margin: "auto",
+                  }}
                 >
                   Add Images
                   <input
@@ -433,7 +411,7 @@ const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
               disabled={!isValid || loading} // Disable button if form is not valid or loading
               endIcon={loading ? <CircularProgress size={20} /> : null}
             >
-              {loading ? "Uploading..." : order ? "Edit Order" : "Create Order"}
+              {loading ? "" : order ? "Edit Order" : "Create Order"}
             </Button>
           </Box>
         </form>
