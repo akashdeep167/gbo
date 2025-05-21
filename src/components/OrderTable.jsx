@@ -151,11 +151,15 @@ const OrderTable = ({ active }) => {
     setSelectedOrder(null);
   };
 
-  const filteredOrders = currentOrders?.filter(
-    (order) =>
-      order.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.order_id.toString().includes(searchTerm)
-  );
+  const filteredOrders = currentOrders
+    ?.filter(
+      (order) =>
+        order.product?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.karigar?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.karat?.toString().includes(searchTerm.toLowerCase()) ||
+        order.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .reverse();
 
   return (
     <StyledBox>
@@ -172,7 +176,7 @@ const OrderTable = ({ active }) => {
         <Typography variant="h5" sx={{ fontWeight: "700" }}>
           {active ? "Active Orders" : "Received Orders"}
         </Typography>
-        <Box sx={{ position: "relative", width: "300px" }}>
+        <Box sx={{ position: "relative", width: "50%" }}>
           <SearchIcon
             size={20}
             style={{
@@ -186,7 +190,7 @@ const OrderTable = ({ active }) => {
           <TextField
             variant="outlined"
             size="small"
-            placeholder="Search by Product or ID"
+            placeholder="Search by Product/Karat/Description/Karigar"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             fullWidth

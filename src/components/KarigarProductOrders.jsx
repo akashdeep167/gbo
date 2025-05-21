@@ -122,13 +122,22 @@ const KarigarProductOrders = () => {
   const karigarOrders = useMemo(() => {
     const ordersByKarigar = {};
     filteredOrders.forEach((order) => {
-      const karigarName = order.karigar ? order?.karigar?.name : "Not Assigned";
+      const karigarName = order.karigar ? order.karigar.name : "Not Assigned";
       if (!ordersByKarigar[karigarName]) {
         ordersByKarigar[karigarName] = [];
       }
       ordersByKarigar[karigarName].push(order);
     });
-    return ordersByKarigar;
+
+    // Sort the karigar names alphabetically
+    const sortedKarigarOrders = {};
+    Object.keys(ordersByKarigar)
+      .sort((a, b) => a.localeCompare(b))
+      .forEach((key) => {
+        sortedKarigarOrders[key] = ordersByKarigar[key];
+      });
+
+    return sortedKarigarOrders;
   }, [filteredOrders]);
 
   const productOrders = useMemo(() => {
@@ -139,7 +148,16 @@ const KarigarProductOrders = () => {
       }
       ordersByProduct[order.product].push(order);
     });
-    return ordersByProduct;
+
+    // Sort the product names alphabetically
+    const sortedProductOrders = {};
+    Object.keys(ordersByProduct)
+      .sort((a, b) => a.localeCompare(b))
+      .forEach((key) => {
+        sortedProductOrders[key] = ordersByProduct[key];
+      });
+
+    return sortedProductOrders;
   }, [filteredOrders]);
 
   const handleCardClick = (order) => {
