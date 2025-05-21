@@ -1,35 +1,80 @@
-import React, { createContext, useEffect, useState } from "react";
-import { ordersList } from "../constants/order";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import {
+  addOrders,
+  deleteOrders,
+  getOrders,
+  updateOrders,
+} from "../server/api";
+import AlertSnackbar from "../components/AlertSnackbar";
+import { UserContext } from "./UserContext";
 
 export const OrderContext = createContext();
 
 export const OrderProvider = ({ children }) => {
   const [orders, setOrders] = useState([]);
+  const { token, user } = useContext(UserContext);
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertSeverity, setAlertSeverity] = useState("success");
 
   useEffect(() => {
-    setOrders(ordersList);
-  }, []);
+    if (token) {
+      const getAllOrders = async () => {
+        const res = await getOrders();
+        setOrders(res?.data);
+      };
+      getAllOrders();
+    }
+  }, [token]);
 
-  const addOrder = (newOrder) => {
+  const addOrder = async (newOrder) => {
     console.log("added new order: ", newOrder);
-    setOrders((prevOrders) => [...prevOrders, newOrder]);
+    const res = await addOrders(newOrder, user);
+    if (res.status === 201) {
+      setOrders((prevOrders) => [...prevOrders, res?.data]);
+      setAlertMessage("Order added successfully!");
+      setAlertSeverity("success");
+      setAlertOpen(true);
+    } else {
+      setAlertMessage(`Failed to add Order.`);
+      setAlertSeverity("error");
+      setAlertOpen(true);
+    }
   };
 
-  const updateOrder = (id, updatedOrder) => {
-    console.log(`Updated order#${id}: `, updatedOrder);
-    setOrders((prevOrders) =>
-      prevOrders.map((order) =>
-        order.id === id ? { ...order, ...updatedOrder } : order
-      )
-    );
+  const updateOrder = async (updatedOrder) => {
+    const res = await updateOrders(updatedOrder);
+    if (res.status === 200) {
+      setOrders((prevOrders) =>
+        prevOrders.map((order) =>
+          order.order_id === updatedOrder.order_id
+            ? { ...res.data.order }
+            : order
+        )
+      );
+      setAlertMessage("Order updated successfully!");
+      setAlertSeverity("success");
+      setAlertOpen(true);
+    } else {
+      setAlertMessage(`Failed to Update Order.`);
+      setAlertSeverity("error");
+      setAlertOpen(true);
+    }
   };
-
-  const deleteOrder = (orderId) => {
-    console.log(`Deleted order#${orderId}`);
-    console.log(orderId);
-    setOrders((prevOrders) =>
-      prevOrders.filter((order) => order.id !== orderId)
-    );
+  const deleteOrder = async (order_id) => {
+    const res = await deleteOrders(order_id);
+    if (res.status === 200) {
+      setOrders((prevOrders) =>
+        prevOrders?.filter((order) => order.order_id !== order_id)
+      );
+      setAlertMessage("Order deleted successfully!");
+      setAlertSeverity("success");
+      setAlertOpen(true);
+    } else {
+      setAlertMessage(`Failed to delete Order.`);
+      setAlertSeverity("error");
+      setAlertOpen(true);
+    }
   };
 
   return (
@@ -37,6 +82,12 @@ export const OrderProvider = ({ children }) => {
       value={{ orders, addOrder, updateOrder, deleteOrder }}
     >
       {children}
+      <AlertSnackbar
+        alertOpen={alertOpen}
+        alertSeverity={alertSeverity}
+        alertMessage={alertMessage}
+        setAlertOpen={setAlertOpen}
+      />
     </OrderContext.Provider>
   );
 };

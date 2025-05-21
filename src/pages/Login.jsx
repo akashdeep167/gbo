@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
   Container,
   TextField,
@@ -8,19 +8,18 @@ import {
   Paper,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import { login as loginApi } from "../server/api";
+import { UserContext } from "../context";
+import bg from "../pictures/bg.jpg";
 
-const validCredentials = {
-  userID: "purnim",
-  password: "123",
-};
-
-const Login = () => {
+export default function Login() {
   const navigate = useNavigate();
-
-  const [formData, setFormData] = useState({
-    userId: "",
+  const { login } = useContext(UserContext);
+  const initialFormData = {
+    username: "",
     password: "",
-  });
+  };
+  const [formData, setFormData] = useState(initialFormData);
   const [invalid, setInvalid] = useState(false);
 
   const handleChange = (event) => {
@@ -32,25 +31,25 @@ const Login = () => {
     setInvalid(false);
   };
 
-  const handleLogin = (event) => {
+  const handleLogin = async (event) => {
     event.preventDefault();
-    if (
-      formData.userId === validCredentials.userID &&
-      formData.password === validCredentials.password
-    ) {
-      localStorage.setItem("auth", true);
+    const user = await loginApi(formData);
+    if (user) {
+      login(user.accessToken);
       navigate("/home");
     } else {
       setInvalid(true);
     }
+    setFormData(initialFormData);
   };
 
   return (
     <Box
       sx={{
         height: "100vh",
-        backgroundImage: "url(https://picsum.photos/1920/1080)",
+        backgroundImage: `url(${bg})`,
         backgroundSize: "cover",
+        backgroundPosition: "center",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -63,7 +62,7 @@ const Login = () => {
             padding: 4,
             borderRadius: 3,
             backdropFilter: "blur(10px)",
-            backgroundColor: "rgba(255, 255, 255, 0.8)",
+            backgroundColor: "#ffffff57",
           }}
         >
           <Typography
@@ -81,8 +80,8 @@ const Login = () => {
               fullWidth
               margin="normal"
               required
-              name="userId"
-              value={formData.userId}
+              name="username"
+              value={formData.username}
               onChange={handleChange}
             />
             <TextField
@@ -111,7 +110,6 @@ const Login = () => {
                 padding: "10px 0",
                 background: "linear-gradient(90deg, #2196f3, #21cbf3)",
               }}
-              onClick={handleLogin}
             >
               Login
             </Button>
@@ -120,6 +118,4 @@ const Login = () => {
       </Container>
     </Box>
   );
-};
-
-export default Login;
+}

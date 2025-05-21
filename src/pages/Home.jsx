@@ -1,12 +1,12 @@
 import React from "react";
-import { Header, KarigarOrders } from "../components";
+import { Header, KarigarProductOrders } from "../components";
 import { Box } from "@mui/material";
 
 const Home = () => {
   return (
     <Box>
       <Header />
-      <KarigarOrders />
+      <KarigarProductOrders />
     </Box>
   );
 };

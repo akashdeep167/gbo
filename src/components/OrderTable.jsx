@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   Typography,
   Box,
@@ -11,196 +11,365 @@ import {
   Paper,
   TextField,
   Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Tooltip,
 } from "@mui/material";
+import { styled } from "@mui/material/styles";
 import OrderModal from "./OrderModal";
 import { OrderContext, KarigarContext } from "../context";
-import { getBackgroundColor } from "../utils";
+import { formatDate, getBackgroundColor } from "../utils";
+import ImageDialog from "./ImageDialog";
+import ConfirmDialog from "./ConfirmDialog";
+import { Search as SearchIcon } from "lucide-react";
+
+const StyledBox = styled(Box)(({ theme }) => ({
+  padding: theme.spacing(3),
+}));
+
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  borderRadius: "5px",
+  overflow: "hidden",
+  boxShadow: "0 4px 20px rgba(212, 175, 55, 0.1)",
+}));
+
+const StyledTableContainer = styled(TableContainer)({
+  maxHeight: "calc(100vh - 200px)",
+  overflow: "auto",
+});
+
+const StyledTable = styled(Table)({
+  borderCollapse: "separate",
+  borderSpacing: 0,
+});
+
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  textAlign: "center",
+  borderRight: "1px solid #d1d1d1",
+  padding: theme.spacing(1.5),
+  "&:last-child": { borderRight: "none" },
+}));
+
+const StyledHeaderCell = styled(StyledTableCell)(({ theme }) => ({
+  fontWeight: "bold",
+  backgroundColor: "#D4AF37",
+  color: theme.palette.getContrastText("#D4AF37"),
+  position: "sticky",
+  top: 0,
+  zIndex: 2,
+}));
+
+const StyledTableRow = styled(TableRow)(({ theme, status }) => ({
+  "&:nth-of-type(odd)": {
+    backgroundColor: status === "complete" ? "#2e2e2e" : "#FFF8E1",
+  },
+  "&:nth-of-type(even)": {
+    backgroundColor: status === "complete" ? "#2e2e2e" : "#FFFFFF",
+  },
+  color: status === "complete" ? "#FFFFFF" : "inherit",
+}));
 
 const OrderTable = ({ active }) => {
   const [currentOrders, setCurrentOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const { orders } = useContext(OrderContext);
+  const { orders, updateOrder } = useContext(OrderContext);
   const { karigars } = useContext(KarigarContext);
   const [searchTerm, setSearchTerm] = useState("");
+  const [openConfirm, setOpenConfirm] = useState(false);
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [openConfirmReceive, setOpenConfirmReceive] = useState(false);
+
   useEffect(() => {
-    let temp;
-    if (active) {
-      temp = orders.filter((ele) => ele.status === "Active");
-    } else {
-      temp = orders.filter((ele) => ele.status === "Completed");
-    }
+    const temp = orders?.filter((ele) =>
+      active
+        ? ele.status === "active" || ele.status === "complete"
+        : ele.status === "receive"
+    );
     setCurrentOrders(temp);
-    // console.log(orders);
-  }, [orders]);
+  }, [orders, active]);
 
   const handleCardClick = (order) => {
-    // console.log(order);
     setSelectedOrder(order);
     setModalOpen(true);
   };
+
   const handleCloseModal = () => {
     setModalOpen(false);
     setSelectedOrder(null);
   };
 
-  const filteredOrders = currentOrders.filter(
-    (order) =>
-      order.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.id.toString().includes(searchTerm)
-  );
+  const handleImageClick = (image) => {
+    setSelectedImage(image);
+    setImageModalOpen(true);
+  };
+
+  const handleCloseImageModal = () => {
+    setImageModalOpen(false);
+    setSelectedImage(null);
+  };
+
+  const handleOpenStatusChange = (order) => {
+    setSelectedOrder(order);
+    setOpenConfirm(true);
+  };
+
+  const handleCloseOpenConfirm = () => {
+    setSelectedOrder(null);
+    setOpenConfirm(false);
+  };
+
+  const handleOpenConfirmReceive = (order) => {
+    setSelectedOrder(order);
+    setOpenConfirmReceive(true);
+  };
+
+  const handleCloseOpenConfirmReceive = () => {
+    setSelectedOrder(null);
+    setOpenConfirmReceive(false);
+  };
+
+  const handleConfirmReceive = async () => {
+    const updatedOrder = {
+      ...selectedOrder,
+      status: "receive",
+    };
+    await updateOrder(updatedOrder);
+    setOpenConfirmReceive(false);
+    setSelectedOrder(null);
+  };
+
+  const handleStatusChange = async () => {
+    const updatedOrder = {
+      ...selectedOrder,
+      status:
+        selectedOrder.status === "complete" ||
+        selectedOrder.status === "receive"
+          ? "active"
+          : "complete",
+    };
+    await updateOrder(updatedOrder);
+    setOpenConfirm(false);
+    setSelectedOrder(null);
+  };
+
+  const filteredOrders = currentOrders
+    ?.filter(
+      (order) =>
+        order.product?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.karigar?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.karat?.toString().includes(searchTerm.toLowerCase()) ||
+        order.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .reverse();
+
   return (
-    <>
+    <StyledBox>
       <Box
-        style={{
+        sx={{
           borderBottom: "2px solid #d1d1d1",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           padding: "10px",
+          marginBottom: 2,
         }}
       >
-        <Typography sx={{ fontSize: "1.5rem", fontWeight: "700" }}>
-          {active ? "Active Orders" : "Compleated Orders"}
+        <Typography variant="h5" sx={{ fontWeight: "700" }}>
+          {active ? "Active Orders" : "Received Orders"}
         </Typography>
-        <TextField
-          variant="outlined"
-          size="small"
-          placeholder="Search by Client or ID"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          sx={{
-            width: "300px",
-          }}
-        />
-      </Box>
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead
+        <Box sx={{ position: "relative", width: "50%" }}>
+          <SearchIcon
+            size={20}
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "10px",
+              transform: "translateY(-50%)",
+              color: "rgba(0, 0, 0, 0.54)",
+            }}
+          />
+          <TextField
+            variant="outlined"
+            size="small"
+            placeholder="Search by Product/Karat/Description/Karigar"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            fullWidth
             sx={{
-              "& th": {
-                borderBottom: "2px solid black",
-                fontSize: "1.1rem",
-                fontWeight: 500,
+              "& .MuiOutlinedInput-root": {
+                paddingLeft: "35px",
               },
             }}
-          >
-            <TableRow>
-              <TableCell sx={{ textAlign: "center" }}>id</TableCell>
-              <TableCell sx={{ textAlign: "center" }}>Client</TableCell>
-              <TableCell sx={{ textAlign: "center" }}>Karat</TableCell>
-              <TableCell sx={{ textAlign: "center" }}>Weight</TableCell>
-              <TableCell sx={{ textAlign: "center" }}>Image</TableCell>
-              <TableCell sx={{ textAlign: "center" }}>Description</TableCell>
-              <TableCell sx={{ textAlign: "center" }}>Date Placed</TableCell>
-              <TableCell sx={{ textAlign: "center" }}>End Date</TableCell>
-              <TableCell sx={{ textAlign: "center" }}>Karigar</TableCell>
-              {/* <TableCell sx={{ textAlign: "center" }}>Change Status</TableCell> */}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredOrders.map((order, index) => (
-              <TableRow
-                key={order.id}
-                sx={{
-                  backgroundColor: index % 2 === 0 ? "#f5f5f5" : "#ffffff",
-                }}
-              >
-                <TableCell
-                  onClick={() => handleCardClick(order)}
-                  sx={{
-                    cursor: "pointer",
-                    textDecoration: "underline",
-                    color: "blue",
-                    textAlign: "center",
-                  }}
-                >
-                  {order.id}
-                </TableCell>
-                <TableCell sx={{ textAlign: "center" }}>
-                  {order.client}
-                </TableCell>
-                <TableCell sx={{ textAlign: "center" }}>
-                  {order.karat}
-                </TableCell>
-                <TableCell sx={{ textAlign: "center" }}>
-                  {order.weight}
-                </TableCell>
-                <TableCell sx={{ textAlign: "center" }}>
-                  <img
-                    src={order.image}
-                    alt="Order"
-                    style={{ width: "100px", height: "auto" }}
-                  />
-                </TableCell>
-                <TableCell sx={{ textAlign: "center" }}>
-                  {order.description}
-                </TableCell>
-                <TableCell sx={{ textAlign: "center", whiteSpace: "nowrap" }}>
-                  {new Intl.DateTimeFormat("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  }).format(new Date(order.datePlaced))}
-                </TableCell>
-                <TableCell
-                  sx={{
-                    textAlign: "center",
-                    whiteSpace: "nowrap",
-                    backgroundColor: getBackgroundColor(order.endDate),
-                  }}
-                >
-                  {new Intl.DateTimeFormat("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  }).format(new Date(order.endDate))}
-                </TableCell>
-                <TableCell sx={{ textAlign: "center" }}>
-                  {karigars.map((karigar) => {
-                    if (karigar.id === order.karigar) {
-                      return karigar.name;
-                    }
-                    return "";
-                  })}
-                </TableCell>
-                {/* <TableCell sx={{ textAlign: "center" }}>
-                  <Tooltip
-                    title={
-                      active
-                        ? "Once the status is changed, you will find the order in the history tab."
-                        : "Once the status is changed, you will find the order in the Active tab."
-                    }
+          />
+        </Box>
+      </Box>
+      <StyledPaper>
+        <StyledTableContainer>
+          <StyledTable stickyHeader>
+            <TableHead>
+              <TableRow>
+                <StyledHeaderCell>ID</StyledHeaderCell>
+                <StyledHeaderCell>Product</StyledHeaderCell>
+                <StyledHeaderCell>Karat</StyledHeaderCell>
+                <StyledHeaderCell>Lot Weight</StyledHeaderCell>
+                <StyledHeaderCell>Images</StyledHeaderCell>
+                <StyledHeaderCell>Description</StyledHeaderCell>
+                <StyledHeaderCell>Placed Date</StyledHeaderCell>
+                <StyledHeaderCell>Delivery Date</StyledHeaderCell>
+                <StyledHeaderCell>Karigar</StyledHeaderCell>
+                <StyledHeaderCell>Status</StyledHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredOrders?.map((order, index) => (
+                <StyledTableRow key={order.order_id} status={order.status}>
+                  <StyledTableCell
+                    onClick={() => handleCardClick(order)}
+                    sx={{
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                      color: order.status === "complete" && "#FFFFFF",
+                    }}
                   >
-                    <Button
-                      variant="outlined"
-                      color="success"
-                      onClick={() => handleClickOpen(order)}
+                    {order.order_id}
+                  </StyledTableCell>
+                  <StyledTableCell
+                    sx={{ color: order.status === "complete" && "#FFFFFF" }}
+                  >
+                    {order.product}
+                  </StyledTableCell>
+                  <StyledTableCell
+                    sx={{ color: order.status === "complete" && "#FFFFFF" }}
+                  >
+                    {order.karat}
+                  </StyledTableCell>
+                  <StyledTableCell
+                    sx={{ color: order.status === "complete" && "#FFFFFF" }}
+                  >
+                    {order.lot_weight}
+                  </StyledTableCell>
+                  <StyledTableCell
+                    sx={{
+                      textAlign: "center",
+                      maxWidth: "250px",
+                    }}
+                  >
+                    <Box
                       sx={{
-                        borderColor: "green",
-                        color: "green",
-                        backgroundColor: "transparent",
-                        cursor: "pointer",
-                        "&:hover": {
-                          borderColor: "darkgreen",
-                          color: "darkgreen",
-                        },
+                        display: "flex",
+                        overflowX: "auto",
+                        maxHeight: "120px",
                       }}
                     >
-                      Change Status
+                      {order?.order_images?.map((image, idx) => (
+                        <Box
+                          key={idx}
+                          sx={{
+                            flexShrink: 0,
+                            marginRight: 1,
+                          }}
+                        >
+                          <img
+                            src={image.imageUrl}
+                            alt={`Order ${order.order_id}`}
+                            style={{
+                              height: "90px",
+                              objectFit: "cover",
+                              cursor: "pointer",
+                              borderRadius: "4px",
+                            }}
+                            onClick={() => handleImageClick(image.imageUrl)}
+                          />
+                        </Box>
+                      ))}
+                    </Box>
+                  </StyledTableCell>
+                  <StyledTableCell
+                    sx={{ color: order.status === "complete" && "#FFFFFF" }}
+                  >
+                    {order.description}
+                  </StyledTableCell>
+                  <StyledTableCell
+                    sx={{
+                      textAlign: "center",
+                      whiteSpace: "nowrap",
+                      color: order.status === "complete" && "#FFFFFF",
+                    }}
+                  >
+                    {formatDate(order.placed_date)}
+                  </StyledTableCell>
+                  <StyledTableCell
+                    sx={{
+                      textAlign: "center",
+                      whiteSpace: "nowrap",
+                      backgroundColor: getBackgroundColor(order.delivery_date),
+                      color: order.status === "complete" && "#FFFFFF",
+                    }}
+                  >
+                    {formatDate(order.delivery_date)}
+                  </StyledTableCell>
+                  <StyledTableCell
+                    sx={{ color: order.status === "complete" && "#FFFFFF" }}
+                  >
+                    {karigars?.find(
+                      (karigar) => karigar.id === order.karigar_id
+                    )?.name || ""}
+                  </StyledTableCell>
+                  <StyledTableCell
+                    sx={{
+                      textAlign: "center",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <Button
+                      sx={{
+                        display: "block",
+                        width: "100%",
+                        marginBottom: "16px",
+                        backgroundColor:
+                          order.status === "complete" && "#FFFFFF",
+                        "&:hover": {
+                          backgroundColor: "#FFFFFF",
+                        },
+                      }}
+                      variant="outlined"
+                      onClick={() => handleOpenStatusChange(order)}
+                    >
+                      {order.status === "complete" || order.status === "receive"
+                        ? "Mark as Active"
+                        : "Mark as Complete"}
                     </Button>
-                  </Tooltip>
-                </TableCell> */}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                    {order.status !== "receive" && (
+                      <Button
+                        variant="contained"
+                        color="success"
+                        onClick={() => handleOpenConfirmReceive(order)}
+                        sx={{
+                          display: "block",
+                          width: "100%",
+                          borderColor: "green",
+                          mr: 1,
+                          cursor: "pointer",
+                          "&:hover": {
+                            borderColor: "darkgreen",
+                            color: "white",
+                          },
+                        }}
+                      >
+                        Received
+                      </Button>
+                    )}
+                  </StyledTableCell>
+                </StyledTableRow>
+              ))}
+            </TableBody>
+          </StyledTable>
+        </StyledTableContainer>
+      </StyledPaper>
+      <ImageDialog
+        imageModalOpen={imageModalOpen}
+        handleCloseImageModal={handleCloseImageModal}
+        selectedImage={selectedImage}
+      />
       <OrderModal
         modalOpen={modalOpen}
         order={selectedOrder}
@@ -208,7 +377,26 @@ const OrderTable = ({ active }) => {
         handleCloseModal={handleCloseModal}
         active={active}
       />
-    </>
+      <ConfirmDialog
+        openConfirm={openConfirm}
+        handleCloseOpenConfirm={handleCloseOpenConfirm}
+        confirmation={handleStatusChange}
+        title="Do you want to change the status?"
+        info={
+          selectedOrder?.status === "complete" ||
+          selectedOrder?.status === "receive"
+            ? `Mark the order with id ${selectedOrder?.order_id} as Active`
+            : `Mark the order with id ${selectedOrder?.order_id} as Complete`
+        }
+      />
+      <ConfirmDialog
+        openConfirm={openConfirmReceive}
+        handleCloseOpenConfirm={handleCloseOpenConfirmReceive}
+        confirmation={handleConfirmReceive}
+        title="Do you want to change the status?"
+        info="If marked as received, find the order in the history tab."
+      />
+    </StyledBox>
   );
 };
 

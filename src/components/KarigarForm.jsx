@@ -14,7 +14,6 @@ const KarigarForm = ({ openKarigarForm, handleCloseKarigarForm, karigar }) => {
   const initialKarigarData = {
     name: "",
     description: "",
-    tasks: [],
   };
 
   const { updateKarigar, addKarigar } = useContext(KarigarContext);
@@ -40,25 +39,30 @@ const KarigarForm = ({ openKarigarForm, handleCloseKarigarForm, karigar }) => {
   };
 
   const handleCreateOrUpdateKarigar = () => {
-    const currKarigar = {
-      id: karigar ? karigar.id : Date.now(),
-      ...karigarData,
-    };
+    // const currKarigar = {
+    //   id: karigar ? karigar.id : Date.now(),
+    //   ...karigarData,
+    // };
 
     if (karigar) {
-      updateKarigar(karigar.id, currKarigar);
+      updateKarigar(karigarData);
     } else {
-      addKarigar(currKarigar);
+      addKarigar(karigarData);
     }
 
     handleCloseKarigarForm();
     setKarigarData(initialKarigarData);
   };
 
+  const handleClose = () => {
+    setKarigarData(initialKarigarData);
+    handleCloseKarigarForm();
+  };
+
   return (
     <Modal
       open={openKarigarForm}
-      onClose={handleCloseKarigarForm}
+      onClose={handleClose}
       aria-labelledby="karigar-modal-title"
       aria-describedby="karigar-modal-description"
     >
@@ -77,7 +81,7 @@ const KarigarForm = ({ openKarigarForm, handleCloseKarigarForm, karigar }) => {
       >
         <IconButton
           sx={{ position: "absolute", top: 8, right: 8 }}
-          onClick={handleCloseKarigarForm}
+          onClick={handleClose}
         >
           <CloseIcon />
         </IconButton>

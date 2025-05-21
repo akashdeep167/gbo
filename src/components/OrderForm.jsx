@@ -9,59 +9,72 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  FormControlLabel,
-  RadioGroup,
-  Radio,
   Grid,
   IconButton,
+  CircularProgress,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import FileUploadIcon from "@mui/icons-material/FileUpload";
 import { OrderContext, KarigarContext } from "../context";
 import { products } from "../constants/products";
+import { uploadImagesToS3, deleteImageFromS3 } from "../server/api";
 
 const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
   const initialOrderData = {
-    client: "",
-    karat: "18K",
     product: "",
-    weight: "",
-    image: null,
-    imageName: "",
+    customProduct: "",
+    karat: "18K",
+    karigar_id: undefined,
+    lot_weight: "",
     description: "",
-    datePlaced: "",
-    endDate: "",
-    karigar: "",
-    status: "Active",
+    placed_date: "",
+    delivery_date: "",
+    images: [],
+    status: "active",
     customKarat: "",
+    placed_by: "akash",
   };
 
-  const { karigars, addTaskToKarigar, removeTaskFromKarigar } =
-    useContext(KarigarContext);
+  const { karigars } = useContext(KarigarContext);
   const { addOrder, updateOrder } = useContext(OrderContext);
 
   const [orderData, setOrderData] = useState(initialOrderData);
-
+  const [imageFiles, setImageFiles] = useState([]);
+  const [deletedImages, setDeletedImages] = useState([]);
   const [isValid, setIsValid] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (order) {
+      const imageUrls = order.order_images.map((image) => image.imageUrl);
+
+      // Check if the current karat or product is custom (not predefined)
+      const isCustomKarat = !["18K", "20K", "22K"].includes(order.karat);
+      const isCustomProduct = !products.includes(order.product);
+
       setOrderData({
+        ...initialOrderData,
         ...order,
-        datePlaced: order.datePlaced ? order.datePlaced : "",
-        endDate: order.endDate ? order.endDate : "",
+        images: imageUrls,
+        karigar_id: order.karigar_id || order.karigar?.id,
+        placed_date: order.placed_date || "",
+        delivery_date: order.delivery_date || "",
+        customKarat: isCustomKarat ? order.karat : "", // If custom, set it in customKarat
+        karat: isCustomKarat ? "other" : order.karat, // Set 'other' for custom values
+        customProduct: isCustomProduct ? order.product : "", // Same for customProduct
+        product: isCustomProduct ? "other" : order.product, // Set 'other' for custom products
       });
     }
+    // eslint-disable-next-line
   }, [order]);
 
   useEffect(() => {
-    // Check if all required fields are filled
     const isFormValid =
-      orderData.client &&
-      orderData.weight &&
-      orderData.datePlaced &&
-      orderData.endDate &&
-      orderData.karigar &&
+      orderData.lot_weight &&
+      orderData.placed_date &&
+      orderData.delivery_date &&
+      orderData.karigar_id &&
+      orderData.product &&
       (orderData.karat !== "other" || orderData.customKarat) &&
       (orderData.product !== "other" || orderData.customProduct);
 
@@ -70,6 +83,7 @@ const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
 
   const handleClose = () => {
     setOrderData(initialOrderData);
+    setImageFiles([]);
     setOpen(false);
   };
 
@@ -79,12 +93,56 @@ const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
   };
 
   const handleImageUpload = (e) => {
-    setOrderData({ ...orderData, image: e.target.files[0] });
+    const files = Array.from(e.target.files);
+    const imagePreviews = files.map((file) => URL.createObjectURL(file));
+
+    setOrderData((prevState) => ({
+      ...prevState,
+      images: [...prevState.images, ...imagePreviews],
+    }));
+    setImageFiles([...imageFiles, ...files]); // Store files for S3 upload
+
+    e.target.value = "";
   };
 
-  const handleCreateOrUpdateOrder = () => {
+  const removeImage = (index) => {
+    const imageToRemove = orderData.images[index];
+    if (imageToRemove?.startsWith("blob:")) {
+      setImageFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
+    } else {
+      setDeletedImages((prevDeleted) => [...prevDeleted, imageToRemove]);
+    }
+
+    setOrderData((prevState) => ({
+      ...prevState,
+      images: prevState.images.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleCreateOrUpdateOrder = async () => {
+    let id = order ? order.order_id : Date.now();
+    let uploadedImageUrls = [];
+    if (imageFiles.length > 0) {
+      setLoading(true);
+      uploadedImageUrls = await uploadImagesToS3(imageFiles, id);
+      setLoading(false);
+      if (!uploadedImageUrls) {
+        alert("Failed to upload images");
+        handleClose();
+        return;
+      }
+    }
+
+    // Remove images from S3
+    if (deletedImages.length > 0) {
+      await deleteImageFromS3(deletedImages);
+    }
+    const filteredImages = orderData.images.filter(
+      (image) => !image?.startsWith("blob")
+    );
+
     const currOrder = {
-      id: order ? order.id : Date.now(),
+      order_id: id,
       ...orderData,
       karat:
         orderData.karat === "other" ? orderData.customKarat : orderData.karat,
@@ -92,29 +150,14 @@ const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
         orderData.product === "other"
           ? orderData.customProduct
           : orderData.product,
+      images: [...filteredImages, ...uploadedImageUrls],
     };
-
     if (order) {
-      // Check if the karigar has changed
-      if (order.karigar !== orderData.karigar) {
-        // Remove the task from the previous karigar's tasks array
-        removeTaskFromKarigar(order.karigar, order.id);
-        // Add the task to the new karigar's tasks array
-        addTaskToKarigar(orderData.karigar, order.id);
-      }
-
-      // Update the order
-      updateOrder(order.id, currOrder);
-    } else {
-      // Add the new order
-      addOrder(currOrder);
-
-      // Add the task to the selected karigar's tasks array
-      addTaskToKarigar(orderData.karigar, currOrder.id);
-    }
-    if (order) {
+      await updateOrder(currOrder);
       setOrder(currOrder);
       handleCloseModal();
+    } else {
+      await addOrder(currOrder);
     }
 
     handleClose();
@@ -158,54 +201,6 @@ const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
         <form>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Client"
-                name="client"
-                value={orderData.client}
-                onChange={handleChange}
-                margin="normal"
-                required
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth margin="normal" required>
-                <InputLabel>Karat</InputLabel>
-                <Select
-                  name="karat"
-                  value={orderData.karat}
-                  onChange={handleChange}
-                >
-                  <MenuItem value="18K">18K</MenuItem>
-                  <MenuItem value="20K">20K</MenuItem>
-                  <MenuItem value="22K">22K</MenuItem>
-                  <MenuItem value="other">Other</MenuItem>
-                </Select>
-              </FormControl>
-              {orderData.karat === "other" && (
-                <TextField
-                  fullWidth
-                  label="Custom Karat"
-                  name="customKarat"
-                  value={orderData.customKarat}
-                  onChange={handleChange}
-                  margin="normal"
-                  required
-                />
-              )}
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Weight (g)"
-                name="weight"
-                value={orderData.weight}
-                onChange={handleChange}
-                margin="normal"
-                required
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
               <FormControl fullWidth margin="normal" required>
                 <InputLabel>Product</InputLabel>
                 <Select
@@ -222,18 +217,185 @@ const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
                 </Select>
               </FormControl>
               {orderData.product === "other" && (
-                <TextField
-                  fullWidth
-                  label="Custom product"
-                  name="customProduct"
-                  value={orderData.customProduct}
-                  onChange={handleChange}
-                  margin="normal"
-                  required
-                />
+                <>
+                  <TextField
+                    fullWidth
+                    label="Custom product"
+                    name="customProduct"
+                    value={orderData.customProduct}
+                    onChange={handleChange}
+                    margin="normal"
+                    required
+                    inputProps={{ maxLength: 200 }}
+                  />
+                  <Typography variant="body2" color="textSecondary">
+                    {`${orderData.customProduct.length}/200`}
+                  </Typography>
+                </>
               )}
             </Grid>
-            {/* <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth margin="normal" required>
+                <InputLabel>Karat</InputLabel>
+                <Select
+                  name="karat"
+                  value={orderData.karat}
+                  onChange={handleChange}
+                >
+                  <MenuItem value="18K">18K</MenuItem>
+                  <MenuItem value="20K">20K</MenuItem>
+                  <MenuItem value="22K">22K</MenuItem>
+                  <MenuItem value="other">Other</MenuItem>
+                </Select>
+              </FormControl>
+              {orderData.karat === "other" && (
+                <>
+                  <TextField
+                    fullWidth
+                    label="Custom Karat"
+                    name="customKarat"
+                    value={orderData.customKarat}
+                    onChange={handleChange}
+                    margin="normal"
+                    required
+                    inputProps={{ maxLength: 20 }}
+                  />
+                  <Typography variant="body2" color="textSecondary">
+                    {`${orderData.customKarat.length}/20`}
+                  </Typography>
+                </>
+              )}
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth margin="normal" required>
+                <InputLabel>Karigar</InputLabel>
+                <Select
+                  name="karigar_id"
+                  value={orderData.karigar_id || ""}
+                  onChange={handleChange}
+                >
+                  {karigars &&
+                    [...karigars]
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((karigar) => (
+                        <MenuItem key={karigar?.id} value={karigar?.id}>
+                          {karigar.name}
+                        </MenuItem>
+                      ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Lot Weight"
+                name="lot_weight"
+                value={orderData.lot_weight}
+                onChange={handleChange}
+                margin="normal"
+                required
+                inputProps={{ maxLength: 20 }}
+              />
+              <Typography variant="body2" color="textSecondary">
+                {`${orderData.lot_weight.length}/20`}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                label="Description"
+                name="description"
+                value={orderData.description}
+                onChange={handleChange}
+                margin="normal"
+                inputProps={{ maxLength: 200 }} // Limit to 200 characters
+                required
+              />
+              <Typography variant="body2" color="textSecondary">
+                {`${orderData.description.length}/200`}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                type="date"
+                label="Date Placed"
+                name="placed_date"
+                value={orderData.placed_date}
+                onChange={handleChange}
+                margin="normal"
+                InputLabelProps={{ shrink: true }}
+                required
+              />
+              <TextField
+                fullWidth
+                type="date"
+                label="End Date"
+                name="delivery_date"
+                value={orderData.delivery_date}
+                onChange={handleChange}
+                margin="normal"
+                InputLabelProps={{ shrink: true }}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Box
+                mt={1}
+                display="flex"
+                sx={{
+                  overflowX: orderData.images.length === 0 ? "none" : "scroll",
+                  bgcolor: "#f5f5f5",
+                  padding: "10px",
+                }}
+              >
+                {orderData.images.length === 0 ? (
+                  <Box
+                    sx={{
+                      justifyContent: "center",
+                      alignItems: "center",
+                      width: "100%",
+                      height: "100%",
+                      display: "flex",
+                    }}
+                  >
+                    <Typography sx={{ fontSize: "0.875rem" }} color="error">
+                      *No image selected
+                    </Typography>
+                  </Box>
+                ) : (
+                  orderData.images.map((image, index) => (
+                    <Box key={index} sx={{ position: "relative", mr: 1 }}>
+                      <img
+                        src={image}
+                        alt={`Uploaded ${index}`}
+                        style={{ width: 100, height: 100, objectFit: "cover" }}
+                      />
+                      <IconButton
+                        onClick={() =>
+                          removeImage(index, imageFiles.includes(image))
+                        }
+                        sx={{
+                          position: "absolute",
+                          top: 0,
+                          right: 0,
+                          bgcolor: "white",
+                          borderRadius: "50%",
+                          "&:hover": {
+                            bgcolor: "white",
+                          },
+                        }}
+                      >
+                        <CloseIcon
+                          sx={{ fontSize: "0.8rem", color: "rgb(0 0 0)" }}
+                        />
+                      </IconButton>
+                    </Box>
+                  ))
+                )}
+              </Box>
               <FormControl fullWidth margin="normal">
                 <Button
                   variant="outlined"
@@ -242,95 +404,17 @@ const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
                   startIcon={<FileUploadIcon />}
                   sx={{ textTransform: "none" }}
                 >
-                  Upload Image
-                  <input type="file" hidden onChange={handleImageUpload} />
+                  Add Images
+                  <input
+                    type="file"
+                    multiple
+                    hidden
+                    onChange={handleImageUpload}
+                  />
                 </Button>
-                {orderData.imageName && (
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    {orderData.imageName}
-                  </Typography>
-                )}
-              </FormControl>
-            </Grid> */}
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                multiline
-                rows={3}
-                label="Description"
-                name="description"
-                value={orderData.description}
-                onChange={handleChange}
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="date"
-                label="Date Placed"
-                name="datePlaced"
-                value={orderData.datePlaced}
-                onChange={handleChange}
-                margin="normal"
-                InputLabelProps={{ shrink: true }}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="date"
-                label="End Date"
-                name="endDate"
-                value={orderData.endDate}
-                onChange={handleChange}
-                margin="normal"
-                InputLabelProps={{ shrink: true }}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth margin="normal" required>
-                <InputLabel>Karigar</InputLabel>
-                <Select
-                  name="karigar"
-                  value={orderData.karigar}
-                  onChange={handleChange}
-                >
-                  {karigars &&
-                    karigars.map((karigar) => (
-                      <MenuItem key={karigar.id} value={karigar.id}>
-                        {karigar.name}
-                      </MenuItem>
-                    ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <FormControl component="fieldset" margin="normal" fullWidth>
-                <RadioGroup
-                  row
-                  name="status"
-                  value={orderData.status}
-                  onChange={handleChange}
-                >
-                  <FormControlLabel
-                    value="Active"
-                    control={<Radio />}
-                    label="Active"
-                  />
-                  <FormControlLabel
-                    value="Completed"
-                    control={<Radio />}
-                    label="Completed"
-                  />
-                </RadioGroup>
               </FormControl>
             </Grid>
           </Grid>
-
           <Box
             mt={2}
             display="flex"
@@ -346,9 +430,10 @@ const OrderForm = ({ open, setOpen, order, setOrder, handleCloseModal }) => {
               variant="contained"
               color="primary"
               onClick={handleCreateOrUpdateOrder}
-              disabled={!isValid} // Disable button if form is not valid
+              disabled={!isValid || loading} // Disable button if form is not valid or loading
+              endIcon={loading ? <CircularProgress size={20} /> : null}
             >
-              {order ? "Edit Order" : "Create Order"}
+              {loading ? "Uploading..." : order ? "Edit Order" : "Create Order"}
             </Button>
           </Box>
         </form>

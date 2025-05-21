@@ -1,4 +1,4 @@
-import { Box, Typography, styled } from "@mui/material";
+import { Box, styled } from "@mui/material";
 import OrderTable from "./OrderTable";
 
 const Container = styled(Box)`
