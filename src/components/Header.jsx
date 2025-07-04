@@ -74,7 +74,7 @@ export default function Header() {
 
   return (
     <>
-      <AppBar position="static" sx={{ backgroundColor: "#2E2E2E" }}>
+      <AppBar position="sticky" sx={{ backgroundColor: "#2E2E2E" }}>
         <Container maxWidth="xl">
           <Toolbar
             disableGutters

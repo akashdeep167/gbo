@@ -49,8 +49,8 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 
 const StyledHeaderCell = styled(StyledTableCell)(({ theme }) => ({
   fontWeight: "bold",
-  backgroundColor: "#D4AF37",
-  color: theme.palette.getContrastText("#D4AF37"),
+  backgroundColor: "#ECEFF1",
+  color: theme.palette.getContrastText("#ECEFF1"),
   position: "sticky",
   top: 0,
   zIndex: 2,
@@ -58,7 +58,7 @@ const StyledHeaderCell = styled(StyledTableCell)(({ theme }) => ({
 
 const StyledTableRow = styled(TableRow)(({ theme, status }) => ({
   "&:nth-of-type(odd)": {
-    backgroundColor: status === "complete" ? "#2e2e2e" : "#FFF8E1",
+    backgroundColor: status === "complete" ? "#2e2e2e" : "#E5E5E5",
   },
   "&:nth-of-type(even)": {
     backgroundColor: status === "complete" ? "#2e2e2e" : "#FFFFFF",

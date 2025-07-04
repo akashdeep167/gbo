@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Box, Typography, Grid, IconButton } from "@mui/material";
+import {
+  Modal,
+  Box,
+  Typography,
+  Grid,
+  IconButton,
+  useTheme,
+} from "@mui/material";
 import { getAllUsers } from "../server/api";
 import UserCreationForm from "./UserCreationForm";
 import ExistingUsersList from "./ExistingUsersList";
 import { Close } from "@mui/icons-material";
 
 const UserManagementModal = ({ open, onClose }) => {
+  const theme = useTheme();
   const [users, setUsers] = useState([]);
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
 
@@ -76,7 +84,8 @@ const UserManagementModal = ({ open, onClose }) => {
             gutterBottom
             sx={{
               mb: 3,
-              backgroundColor: "#D4AF37",
+              backgroundColor: "#ECEFF1",
+              color: theme.palette.getContrastText("#ECEFF1"),
               p: 1,
               textAlign: "center",
               borderRadius: "5px",
