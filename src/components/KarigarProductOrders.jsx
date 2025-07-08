@@ -68,7 +68,7 @@ const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
 }));
 
 const StyledCard = styled(Card)(({ theme }) => ({
-  borderRadius: 8, // From 12 to 8
+  borderRadius: 8,
   boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
   transition: "transform 0.2s ease-in-out",
   cursor: "pointer",
@@ -86,6 +86,11 @@ const StyledCard = styled(Card)(({ theme }) => ({
 const StyledChip = styled(Chip)(({ theme, date, status }) => ({
   backgroundColor: status === "complete" ? "#2e2e2e" : getBackgroundColor(date),
   color: status === "complete" ? "#fff" : "#000",
+  borderRadius: 8,
+  display: "flex",
+  position: "absolute",
+  top: 0,
+  right: 0,
   border: "1px solid #D9EDF7",
   fontSize: 12,
   height: 24,
@@ -187,30 +192,29 @@ const KarigarProductOrders = () => {
         backgroundColor: getKaratBackground(order.karat),
       }}
     >
-      <CardContent>
-        <Box
+      <CardContent sx={{ position: "relative", paddingTop: "24px" }}>
+        <StyledChip
+          label={order.status === "active" ? "Active" : "Complete"}
+          size="small"
+          date={order.delivery_date}
+          status={order.status}
+        />
+        <Typography
+          variant="subtitle2"
           sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            fontWeight: 600,
+            lineHeight: 1.2,
             mb: 1,
+            maxWidth: "calc(100% - 40px)",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
         >
-          <Typography
-            variant="subtitle2"
-            sx={{ fontWeight: 600, lineHeight: 1.2 }}
-          >
-            {showKarigarView
-              ? formatString(order.product)
-              : formatString(order.karigar?.name)}
-          </Typography>
-          <StyledChip
-            label={order.status === "active" ? "Active" : "Complete"}
-            size="small"
-            date={order.delivery_date}
-            status={order.status}
-          />
-        </Box>
+          {showKarigarView
+            ? formatString(order.product)
+            : formatString(order.karigar?.name)}
+        </Typography>
         <Typography variant="body2">Lot: {order.lot_weight}</Typography>
         <Typography variant="body2">
           Placed: {formatDate(order.placed_date)}
