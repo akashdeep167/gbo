@@ -205,15 +205,12 @@ const KarigarProductOrders = () => {
             fontWeight: 600,
             lineHeight: 1.2,
             mb: 1,
-            maxWidth: "calc(100% - 40px)",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
           }}
         >
-          {showKarigarView
-            ? formatString(order.product)
-            : formatString(order.karigar?.name)}
+          {showKarigarView ? order.product : order.karigar?.name}
         </Typography>
         <Typography variant="body2">Lot: {order.lot_weight}</Typography>
         <Typography variant="body2">
