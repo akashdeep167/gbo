@@ -5,11 +5,11 @@ const getBackgroundColor = (delivery_date) => {
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
   if (diffDays <= 0) {
-    return "#D91656";
+    return "#f8005380";
   } else if (diffDays <= 3) {
-    return "#ffeb00b0";
+    return "#f7eb6cb0";
   } else {
-    return "#6EC207";
+    return "#92ea26a6";
   }
 };
 
