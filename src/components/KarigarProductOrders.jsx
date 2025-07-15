@@ -174,13 +174,13 @@ const KarigarProductOrders = () => {
   const getKaratBackground = (karat) => {
     switch (karat) {
       case "18K":
-        return "#c7cacbff";
+        return "#c7cacb75";
       case "20K":
-        return "#fbb2cbff";
+        return "#fbb2cb87";
       case "22K":
-        return "#ade0f7ff";
+        return "#ade0f775";
       default:
-        return "#ffffffff";
+        return "#ffffff92";
     }
   };
 
